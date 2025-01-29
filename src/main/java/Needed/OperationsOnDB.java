@@ -8,11 +8,11 @@ import org.slf4j.LoggerFactory;
 interface OperationsOnDB {
     String DB_URL = System.getenv("DB_URL") != null
             ? System.getenv("DB_URL")
-            : "jdbc:mysql://localhost:3306/LockedOut?useSSL=false";
+            : "jdbc:mysql://localhost:3306/LockItOut?useSSL=false";
     String DB_USER = ArgParsing.GetOption("ul", cmd);
     String DB_PASSWORD = ArgParsing.GetOption("pl", cmd);
 
-    final Logger logger = LoggerFactory.getLogger(OperationsOnDB.class);
+    Logger logger = LoggerFactory.getLogger(OperationsOnDB.class);
 
     static Connection ConnectToDB(){
         try {
@@ -26,61 +26,59 @@ interface OperationsOnDB {
     }
 
     String CreateDBQuery = "CREATE DATABASE IF NOT EXISTS LockedOut";
+    String GrantPrevilegesQuery = "GRANT ALL PRIVILEGES ON LockedOut.* TO '?'@'localhost'";
+    String FlushQuery = "FLUSH PRIVILEGES";
     static void CreateDB(){
-        try (Connection Connect = ConnectToDB(); Statement Statement = Connect.createStatement() ){
-            Statement.executeUpdate(CreateDBQuery);
-            System.out.println("Successfully created database");
+        try (Connection Connect = ConnectToDB();
+             PreparedStatement PreparedStatement1 = Connect.prepareStatement(CreateDBQuery) ;
+            PreparedStatement PreparedStatement2 = Connect.prepareStatement(GrantPrevilegesQuery);
+            PreparedStatement PreparedStatement3 = Connect.prepareStatement(FlushQuery))
+        {
+            PreparedStatement1.executeUpdate();
+            PreparedStatement2.setString(1, DB_USER);
+            PreparedStatement2.executeUpdate();
+            PreparedStatement3.executeUpdate();
+            logger.info("Successfully created database");
         } catch (SQLException e) {
+            logger.error("Database creation failed: {}", e.getMessage(), e);
             throw new RuntimeException(e);
         }
     }
 
     String UseDBQuery = "USE LockedOut";
-    String CreateTableQuery = "CREATE TABLE IF NOT EXISTS PLATFORMS (PLATFORM TEXT PRIMARY KEY NOT NULL)";
+    String CreatePLatformsTableQuery = "CREATE TABLE IF NOT EXISTS PLATFORMS (PLATFORM TEXT PRIMARY KEY NOT NULL)";
     static void CreatePlatformsTable(){
         try (Connection Connect = ConnectToDB(); Statement Statement = Connect.createStatement()){
             Statement.executeUpdate(UseDBQuery);
-            Statement.executeUpdate(CreateTableQuery);
+            Statement.executeUpdate(CreatePLatformsTableQuery);
             System.out.println("Successfully created PLATFORMS Table");
         }catch (SQLException e){
+            logger.error("PLATFORMS table creation failed");
             throw new RuntimeException(e);
         }
     }
 
     static void InsertIntoPlatformsTable(String PLATFORM){
-        final String InsertIntoPLATFORMSTableQuery = "INSERT INTO PLATFORMS (PLATFORM) VALUES (?)";
+        CreatePlatformsTable();
+        final String InsertIntoPLATFORMSTableQuery = "INSERT IGNORE INTO PLATFORMS (PLATFORM) VALUES (?)";
         try (Connection Connect = ConnectToDB(); PreparedStatement PreparedStatement = Connect.prepareStatement(InsertIntoPLATFORMSTableQuery)){
             PreparedStatement.setString(1, PLATFORM);
             PreparedStatement.executeUpdate();
         }catch (SQLException e){
+            logger.error("Insertion failed");
             throw new RuntimeException(e);
         }
     }
 
-    static void DeletePlatform(String PLATFORM){
-        final String DeleteFromPLATFORMSTableQuery = "DELETE FROM PLATFORMS WHERE PLATFORM = ?";
-        try (Connection Connect = ConnectToDB(); PreparedStatement PreparedStatement = Connect.prepareStatement(DeleteFromPLATFORMSTableQuery)){
-            PreparedStatement.setString(1, PLATFORM);
-            int ErrorsInRows = PreparedStatement.executeUpdate();
-
-            if (ErrorsInRows>0) logger.info("Successfully deleted PLATFORM " + PLATFORM);
-            else logger.error("Failed to delete PLATFORM");
-
-        }catch (SQLException e){
-            throw new RuntimeException("Error deleting PLATFORM: " + e.getMessage(), e);
-        }
-
-    }
-
     static boolean PlatformExists(String PLATFORM){
-        final String GetFromPLATFORMSTableQuery = "SELECT FROM PLATFORMS WHERE PLATFORM = ?";
+        final String GetFromPLATFORMSTableQuery = "SELECT 1 FROM PLATFORMS WHERE PLATFORM = ?";
         try (Connection Connect = ConnectToDB(); PreparedStatement PreparedStatement = Connect.prepareStatement(GetFromPLATFORMSTableQuery)){
             PreparedStatement.setString(1, PLATFORM);
             ResultSet Result = PreparedStatement.executeQuery();
-            if(Result.wasNull()) return false;
-            return true;
+            return Result.next();
 
         }catch (SQLException e){
+            logger.error("Error");
             throw new RuntimeException("Error finding PLATFORM: " + e.getMessage(), e);
         }
 
@@ -248,16 +246,17 @@ interface OperationsOnDB {
         }
     }
 
-    static void ModifyEmail(String USERNAME, String old_EMAIL, String new_EMAIL){
-        if (USERNAME == null || old_EMAIL == null || new_EMAIL == null) {
+    static void ModifyEmail(String PLATFORM, String USERNAME, String old_EMAIL, String new_EMAIL){
+        if (PLATFORM==null || USERNAME == null || old_EMAIL == null || new_EMAIL == null) {
             throw new IllegalArgumentException("Username, old email, and new email must be provided");
         }
-        String ModifyEMAILQuery = "UPDATE Credentials SET EMAIL = ? WHERE USERNAME = ? AND EMAIL = ?";
+        String ModifyEMAILQuery = "UPDATE Credentials SET EMAIL = ? WHERE PLATFORM = ? AND USERNAME = ? AND EMAIL = ?";
         try (Connection Connect = ConnectToDB();
              PreparedStatement PreparedStatement = Connect.prepareStatement(ModifyEMAILQuery))
         {   PreparedStatement.setString(1, new_EMAIL);
-            PreparedStatement.setString(2, USERNAME);
-            PreparedStatement.setString(3, old_EMAIL);
+            PreparedStatement.setString(2, PLATFORM);
+            PreparedStatement.setString(3, USERNAME);
+            PreparedStatement.setString(4, old_EMAIL);
             int ErrorsInRows = PreparedStatement.executeUpdate();
 
             if (ErrorsInRows > 0) logger.info("Successfully updated EMAIL for USERNAME: " + USERNAME);
@@ -269,15 +268,16 @@ interface OperationsOnDB {
         }
     }
 
-    static void ModifyUsername(String EMAIL, String old_USERNAME, String new_USERNAME){
-        if (old_USERNAME == null || EMAIL == null || new_USERNAME == null) {
+    static void ModifyUsername(String PLATFORM, String EMAIL, String old_USERNAME, String new_USERNAME){
+        if (PLATFORM==null || old_USERNAME == null || EMAIL == null || new_USERNAME == null) {
             throw new IllegalArgumentException("EMAIL, old Username and new USERNAME must be provided");
         }
-        final String ModifyUSERNAMEQuery = "UPDATE Credentials SET USERNAME = ? WHERE EMAIL = ? AND USERNAME = ?";
+        final String ModifyUSERNAMEQuery = "UPDATE Credentials SET USERNAME = ? WHERE PLATFORM = ? AND EMAIL = ? AND USERNAME = ?";
         try(Connection Connect = ConnectToDB(); PreparedStatement PreparedStatement = Connect.prepareStatement(ModifyUSERNAMEQuery)){
             PreparedStatement.setString(1, new_USERNAME);
-            PreparedStatement.setString(2, EMAIL);
-            PreparedStatement.setString(3, old_USERNAME);
+            PreparedStatement.setString(2, PLATFORM);
+            PreparedStatement.setString(3, EMAIL);
+            PreparedStatement.setString(4, old_USERNAME);
             int ErrorsInRows = PreparedStatement.executeUpdate();
 
             if (ErrorsInRows > 0) logger.info("Successfully updated USERNAME for EMAIL : " + EMAIL);
@@ -288,16 +288,17 @@ interface OperationsOnDB {
         }
     }
 
-    static void ModifyPassword(String EMAIL, String USERNAME, String old_PASSWORD, String new_PASSWORD){
-        if (USERNAME == null || EMAIL == null || old_PASSWORD== null || new_PASSWORD == null) {
+    static void ModifyPassword(String PLATFORM, String EMAIL, String USERNAME, String old_PASSWORD, String new_PASSWORD){
+        if (PLATFORM==null || USERNAME == null || EMAIL == null || old_PASSWORD== null || new_PASSWORD == null) {
             throw new IllegalArgumentException("Username, EMAIL, old password and new password must be provided");
         }
-        final String ModifyPASSWORDQuery ="UPDATE Credentials SET PASSWORD = ? WHERE EMAIL = ? AND USERNAME = ? AND PASSWORD = ?";
+        final String ModifyPASSWORDQuery ="UPDATE Credentials SET PASSWORD = ? WHERE PLATFORM = ? AND EMAIL = ? AND USERNAME = ? AND PASSWORD = ?";
         try(Connection Connect = ConnectToDB(); PreparedStatement PreparedStatement = Connect.prepareStatement(ModifyPASSWORDQuery)){
             PreparedStatement.setString(1, new_PASSWORD);
-            PreparedStatement.setString(2, EMAIL);
-            PreparedStatement.setString(3, USERNAME);
-            PreparedStatement.setString(4, old_PASSWORD);
+            PreparedStatement.setString(2, PLATFORM);
+            PreparedStatement.setString(3, EMAIL);
+            PreparedStatement.setString(4, USERNAME);
+            PreparedStatement.setString(5, old_PASSWORD);
             int ErrorsInRows = PreparedStatement.executeUpdate();
 
             if (ErrorsInRows > 0) logger.info("Successfully updated PASSWORD for EMAIL/USERNAME : " + EMAIL +"/" +USERNAME);
@@ -314,36 +315,36 @@ interface OperationsOnDB {
     Usage: java -jar tool.jar -ul <db_user> -pl <db_password> [OPERATION] [ARGUMENTS]
     
     Mandatory Authentication:
-      -ul, --user <user>          Database username
-      -pl, --pass <pass>          Database password
+      -ul, --user <user>                            Database username
+      -pl, --pass <pass>                            Database password
     
     Operations:
-      -a,  --add                  Add new credentials (requires -pf -e -u -p)
-      -d,  --delete               Delete credentials (requires -pf and either -e or -u)
-      -sa, --show-all             Show all credentials
-      -sp, --show-platforms       List all platforms
-      -sc, --show-credentials     Show credentials for platform (requires -pf and -e/-u)
-      -mu, --modify-username      Modify username (requires -pf -e <old> <new>)
-      -me, --modify-email         Modify email (requires -pf -u <old> <new>)
-      -mp, --modify-password      Modify password (requires -pf -e/-u <old> <new>)
-      -e,  --empty                Truncate all data
-      -h,  --help                 Show this help
+      -a,  --add                                    Add new credentials (requires -pf -e -u -p)
+      -d,  --delete                                 Delete credentials (requires -pf and either -e or -u)
+      -sa, --show-all                               Show all credentials
+      -sp, --show-platforms                         List all platforms
+      -sc, --show-credentials                       Show credentials for platform (requires -pf and -e/-u)
+      -mu, --modify-username <old> <new>            Modify username
+      -me, --modify-email <old> <new>               Modify email
+      -mp, --modify-password <old> <new>            Modify password
+      -e,  --empty                                  Truncate all data
+      -h,  --help                                   Show this help
 
     Arguments:
-      -pf, --platform <name>      Service/platform name (e.g. 'Google')
-      -u,  --user <username>      Account username
-      -e,  --email <address>      Account email
-      -p,  --pass <password>      Account password
+      -pf, --platform <name>                        Service/platform name (e.g. 'Google')
+      -u,  --user <username>                        Account username
+      -e,  --email <address>                        Account email
+      -p,  --pass <password>                        Account password
 
     Examples:
       Add credentials:
-        -ul root -pl secret -a -pf Google -e user@mail.com -u johndoe -p s3cr3t
+        java -jar LockItOut.jar -ul root -pl secret -a -pf Google -e user@mail.com -u johndoe -p s3cr3t
       
       Show Gmail credentials:
-        -ul root -pl secret -sc -pf Google -e user@mail.com
+        -java -jar LockItOut.jar ul root -pl secret -sc -pf Google -e user@mail.com
       
-      Change password:
-        -ul root -pl secret -mp -pf Google -u johndoe oldpass newpass
+      Change username:
+        java -jar LockItOut.jar -ul root -pl secret -mu old_username new_username -pf google -e user@mail.com
     """;
     static void Helper(){
         System.out.println(Description);

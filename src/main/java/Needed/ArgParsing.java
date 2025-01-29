@@ -16,9 +16,9 @@ public class ArgParsing {
         Option DBPass = new Option("pl", "pass", true,"parses the db password to give you access");
         Option AddCredentials = new Option("a", "add", false,"Add new credentials to database");
         Option DeleteCredentials = new Option("d", "delete", false, "Delete credentials from database");
-        Option ModifyUserName = new Option("mu", "modify_username", false, "Modify username");
-        Option ModifyPassword = new Option("mp", "modify_password", false, "Modify password");
-        Option ModifyEmail = new Option("me", "modify_email", false, "Modify email");
+        Option ModifyUserName = new Option("mu", "modify-username", true, "Modify username (requires: <old_username> <new_username>)");
+        Option ModifyPassword = new Option("mp", "modify-password", true, "Modify password (requires: <old_password> <new_password>)");
+        Option ModifyEmail = new Option("me", "modify-email", true, "Modify email (requires: <old_email> <new_email>)");
         Option GetCredentials = new Option ("s", "show", false,"Get credentials from database");
         Option GetAllCredentials = new Option ("sa", "show-all", false,"Get All credentials from database");
         Option GetAllPlatforms = new Option ("sp", "show_platforms", false,"Get All platforms from database");
@@ -29,6 +29,15 @@ public class ArgParsing {
         Option UserName = new Option("u", "user", true, "Parse Username ");
         Option Password = new Option("p", "pass", true,"Parse password");
         Option email = new Option ("e", "email", true, "Parse email");
+
+        ModifyUserName.setArgs(2);
+        ModifyUserName.setValueSeparator(' ');
+
+        ModifyPassword.setArgs(2);
+        ModifyPassword.setValueSeparator(' ');
+
+        ModifyEmail.setArgs(2);
+        ModifyEmail.setValueSeparator(' ');
 
         Operation.addOption(AddCredentials);
         Operation.addOption(DeleteCredentials);
