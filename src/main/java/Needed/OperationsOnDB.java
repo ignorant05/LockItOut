@@ -11,7 +11,10 @@ interface OperationsOnDB {
 
     String DB_URL = System.getenv("DB_URL") != null
             ? System.getenv("DB_URL")
-            : "jdbc:mysql://localhost:3306/LockItOut?useSSL=false";
+            : "jdbc:mysql://localhost:3306/?useSSL=false";
+    static String GetDBName(CommandLine cmd) {
+        return ArgParsing.GetOption("db", cmd);
+    }
     static String getDbUser(CommandLine cmd) {
         return ArgParsing.GetOption("ul", cmd);
     }
@@ -28,40 +31,33 @@ interface OperationsOnDB {
             String DB_PASSWORD = getDbPassword(cmd);
             return DriverManager.getConnection(DB_URL, DB_USER, DB_PASSWORD);
         } catch (SQLException e) {
-            logger.error("Connection failed: {}", e.getMessage());
+            logger.error("Connection failed: ");
             throw new RuntimeException(e);
         }
     }
 
-    String CreateDBQuery = "CREATE DATABASE IF NOT EXISTS LockedOut";
-    String GrantPrevilegesQuery = "GRANT ALL PRIVILEGES ON LockedOut.* TO '?'@'localhost'";
-    String FlushQuery = "FLUSH PRIVILEGES";
     static void CreateDB(CommandLine cmd){
+        String CreateDBQuery = "CREATE DATABASE IF NOT EXISTS "+GetDBName(cmd);
         try (Connection Connect = ConnectToDB(cmd);
              PreparedStatement PreparedStatement1 = Connect.prepareStatement(CreateDBQuery) ;
-            PreparedStatement PreparedStatement2 = Connect.prepareStatement(GrantPrevilegesQuery);
-            PreparedStatement PreparedStatement3 = Connect.prepareStatement(FlushQuery))
+            Statement Statement = Connect.createStatement();
+            PreparedStatement PreparedStatement3 = Connect.prepareStatement("FLUSH PRIVILEGES"))
         {
             PreparedStatement1.executeUpdate();
-            PreparedStatement2.setString(1, getDbUser(cmd));
-            PreparedStatement2.executeUpdate();
+            Statement.executeUpdate("GRANT ALL PRIVILEGES ON `" + GetDBName(cmd) + "`.* TO '" + getDbUser(cmd) + "'@'localhost'");
             PreparedStatement3.executeUpdate();
-            logger.info("Successfully created database");
         } catch (SQLException e) {
-            logger.error("Database creation failed: {}", e.getMessage(), e);
+            logger.error("Database creation failed: ");
             throw new RuntimeException(e);
         }
     }
-
-    String UseDBQuery = "USE LockItOut";
     String CreatePLatformsTableQuery = "CREATE TABLE IF NOT EXISTS PLATFORMS ("
-            + "PLATFORM VARCHAR(255) PRIMARY KEY NOT NULL"
-            + ")";
+            + "PLATFORM VARCHAR(255) PRIMARY KEY NOT NULL UNIQUE"
+            + ") ENGINE=InnoDB";
     static void CreatePlatformsTable(CommandLine cmd){
         try (Connection Connect = ConnectToDB(cmd); Statement Statement = Connect.createStatement()){
-            Statement.executeUpdate(UseDBQuery);
+            Statement.executeUpdate( "USE "+GetDBName(cmd));
             Statement.executeUpdate(CreatePLatformsTableQuery);
-            System.out.println("Successfully created PLATFORMS Table");
         }catch (SQLException e){
             logger.error("PLATFORMS table creation failed");
             throw new RuntimeException(e);
@@ -72,6 +68,7 @@ interface OperationsOnDB {
         CreatePlatformsTable(cmd);
         final String InsertIntoPLATFORMSTableQuery = "INSERT IGNORE INTO PLATFORMS (PLATFORM) VALUES (?)";
         try (Connection Connect = ConnectToDB(cmd); PreparedStatement PreparedStatement = Connect.prepareStatement(InsertIntoPLATFORMSTableQuery)){
+            PreparedStatement.executeUpdate( "USE "+GetDBName(cmd));
             PreparedStatement.setString(1, PLATFORM);
             PreparedStatement.executeUpdate();
         }catch (SQLException e){
@@ -83,6 +80,7 @@ interface OperationsOnDB {
     static boolean PlatformExists(String PLATFORM, CommandLine cmd){
         final String GetFromPLATFORMSTableQuery = "SELECT 1 FROM PLATFORMS WHERE PLATFORM = ?";
         try (Connection Connect = ConnectToDB(cmd); PreparedStatement PreparedStatement = Connect.prepareStatement(GetFromPLATFORMSTableQuery)){
+            PreparedStatement.executeUpdate( "USE "+GetDBName(cmd));
             PreparedStatement.setString(1, PLATFORM);
             ResultSet Result = PreparedStatement.executeQuery();
             return Result.next();
@@ -106,6 +104,7 @@ interface OperationsOnDB {
         try (Connection Connect = ConnectToDB(cmd);
              PreparedStatement PreparedStatement1 = Connect.prepareStatement(DeleteCredentialsQuery1);
              PreparedStatement PreparedStatement2 = Connect.prepareStatement(DeleteCredentialsQuery2)){
+            PreparedStatement1.executeUpdate( "USE "+GetDBName(cmd));
             PreparedStatement1.setString(1, PLATFORM);
             PreparedStatement2.setString(1, PLATFORM);
             int ErrorsInRows = 0;
@@ -127,15 +126,17 @@ interface OperationsOnDB {
     }
 
     String CreateCredsTableQuery = "CREATE TABLE IF NOT EXISTS Credentials ("
+            + "ID INT AUTO_INCREMENT PRIMARY KEY, "
             + "PLATFORM VARCHAR(255) NOT NULL, "
-            + "EMAIL TEXT NOT NULL, "
-            + "USERNAME TEXT NOT NULL, "
-            + "PASSWORD TEXT NOT NULL, "
+            + "EMAIL VARCHAR(511) NOT NULL, "
+            + "USERNAME VARCHAR(255) NOT NULL, "
+            + "PASSWORD VARCHAR(255) NOT NULL, "
             + "FOREIGN KEY (PLATFORM) REFERENCES PLATFORMS(PLATFORM) "
             + "ON DELETE CASCADE ON UPDATE CASCADE"
-            + ")";
+            + ") ENGINE=InnoDB";
     static void CreateCredentialsTable(CommandLine cmd) {
         try (Connection Connect = ConnectToDB(cmd); Statement Statement = Connect.createStatement()){
+            Statement.executeUpdate( "USE "+GetDBName(cmd));
             Statement.executeUpdate(CreateCredsTableQuery);
         }catch (SQLException e){
             throw new RuntimeException("Error creating credentials table : "+e.getMessage(), e);
@@ -151,7 +152,7 @@ interface OperationsOnDB {
         }
         String InsertNewCredsQuery = "INSERT INTO Credentials (PLATFORM, EMAIL, USERNAME, PASSWORD) VALUES (?,?,?,?)";
         try (Connection Connect = ConnectToDB(cmd);PreparedStatement PreparedStatement = Connect.prepareStatement(InsertNewCredsQuery) ){
-
+            PreparedStatement.executeUpdate( "USE "+GetDBName(cmd));
             PreparedStatement.setString(1, PLATFORM);
             PreparedStatement.setString(2, EMAIL);
             PreparedStatement.setString(3, USERNAME);
@@ -169,6 +170,7 @@ interface OperationsOnDB {
     String ShowALLCredsQuery = "SELECT * FROM Credentials";
     static void ShowALL (CommandLine cmd){
         try (Connection Connect = ConnectToDB(cmd);PreparedStatement PreparedStatement = Connect.prepareStatement(ShowALLCredsQuery)){
+            PreparedStatement.executeUpdate( "USE "+GetDBName(cmd));
             ResultSet ResultSet = PreparedStatement.executeQuery();
 
             System.out.println("------------------------------------------------------------------------------------------------------------------");
@@ -181,8 +183,8 @@ interface OperationsOnDB {
                 String username = ResultSet.getString("USERNAME");
                 String password = ResultSet.getString("PASSWORD");
                 System.out.printf("| %-10s | %-40s | %-15s | %-20s%n |\n", platform, email, username, password);
+                System.out.println("------------------------------------------------------------------------------------------------------------------");
             }
-            System.out.println("------------------------------------------------------------------------------------------------------------------");
 
         }catch (SQLException e){
             throw new RuntimeException("Error showing credential table : "+e.getMessage(), e);
@@ -192,6 +194,7 @@ interface OperationsOnDB {
     String ShowPlaformsTableQuery = "SELECT * FROM PLATFORMS";
     static void ShowPlatformsTable(CommandLine cmd){
         try (Connection Connect = ConnectToDB(cmd);PreparedStatement PreparedStatement = Connect.prepareStatement(ShowPlaformsTableQuery)){
+            PreparedStatement.executeUpdate( "USE "+GetDBName(cmd));
             ResultSet ResultSet =PreparedStatement.executeQuery();
 
             System.out.println("--------------------------");
@@ -200,7 +203,7 @@ interface OperationsOnDB {
 
             while (ResultSet.next()) {
                 String platform = ResultSet.getString("PLATFORM");
-                System.out.printf("|  %-10s  |\n", platform);
+                System.out.printf("|  %-20s  |\n", platform);
             }
             System.out.println("-------------------------");
 
@@ -210,7 +213,6 @@ interface OperationsOnDB {
     }
 
     static void ShowSpecificCreds(String PLATFORM, String EMAIL, String USERNAME,CommandLine cmd){
-
         if (PLATFORM == null){
             logger.error ("PLATFORM is null");
             System.exit(-1);
@@ -229,6 +231,7 @@ interface OperationsOnDB {
             ShowSpecificCredsQuery = "SELECT * FROM Credentials WHERE EMAIL = ?";
         }
         try (Connection Connect = ConnectToDB(cmd);PreparedStatement PreparedStatement = Connect.prepareStatement(ShowSpecificCredsQuery)){
+            PreparedStatement.executeUpdate( "USE "+GetDBName(cmd));
             if (USERNAME != null && EMAIL != null) {
                 PreparedStatement.setString(1, USERNAME);
                 PreparedStatement.setString(2, EMAIL);
@@ -240,16 +243,16 @@ interface OperationsOnDB {
             ResultSet ResultSet = PreparedStatement.executeQuery();
 
             System.out.println("------------------------------------------------------------------------------------------------------------------");
-            System.out.println("|        PLATFORM        |                EMAIL                |        USERNAME        |        PASSWORD        |");
+            System.out.println("|        PLATFORM        |                 EMAIL                 |        USERNAME        |        PASSWORD        |");
             System.out.println("------------------------------------------------------------------------------------------------------------------");
             while (ResultSet.next()) {
                 String platform = ResultSet.getString("PLATFORM");
                 String email = ResultSet.getString("EMAIL");
                 String username = ResultSet.getString("USERNAME");
                 String password = ResultSet.getString("PASSWORD");
-                System.out.printf("| %-10s | %-40s | %-15s | %-20s%n |\n", platform, email, username, password);
+                System.out.printf("|  %-20s  |  %-40s  |  %-25s  |  %-30s  |\n", platform, email, username, password);
+                System.out.println("------------------------------------------------------------------------------------------------------------------");
             }
-            System.out.println("------------------------------------------------------------------------------------------------------------------");
 
         }catch (SQLException e){
             throw new RuntimeException("Error showing credentials : "+e.getMessage(), e);
@@ -263,7 +266,8 @@ interface OperationsOnDB {
         String ModifyEMAILQuery = "UPDATE Credentials SET EMAIL = ? WHERE PLATFORM = ? AND USERNAME = ? AND EMAIL = ?";
         try (Connection Connect = ConnectToDB(cmd);
              PreparedStatement PreparedStatement = Connect.prepareStatement(ModifyEMAILQuery))
-        {   PreparedStatement.setString(1, new_EMAIL);
+        {   PreparedStatement.executeUpdate( "USE "+GetDBName(cmd));
+            PreparedStatement.setString(1, new_EMAIL);
             PreparedStatement.setString(2, PLATFORM);
             PreparedStatement.setString(3, USERNAME);
             PreparedStatement.setString(4, old_EMAIL);
@@ -284,6 +288,7 @@ interface OperationsOnDB {
         }
         final String ModifyUSERNAMEQuery = "UPDATE Credentials SET USERNAME = ? WHERE PLATFORM = ? AND EMAIL = ? AND USERNAME = ?";
         try(Connection Connect = ConnectToDB(cmd); PreparedStatement PreparedStatement = Connect.prepareStatement(ModifyUSERNAMEQuery)){
+            PreparedStatement.executeUpdate( "USE "+GetDBName(cmd));
             PreparedStatement.setString(1, new_USERNAME);
             PreparedStatement.setString(2, PLATFORM);
             PreparedStatement.setString(3, EMAIL);
@@ -292,6 +297,7 @@ interface OperationsOnDB {
 
             if (ErrorsInRows > 0) logger.info("Successfully updated USERNAME for EMAIL : " + EMAIL);
             else logger.error("EMAIL : "+EMAIL+" DOES NOT EXIST");
+            OperationsOnDB.DeleteCredentials(PLATFORM,EMAIL,new_USERNAME,cmd);
 
         }catch (SQLException e){
             throw new RuntimeException("Error updating USERNAME : "+e.getMessage(), e);
@@ -304,6 +310,7 @@ interface OperationsOnDB {
         }
         final String ModifyPASSWORDQuery ="UPDATE Credentials SET PASSWORD = ? WHERE PLATFORM = ? AND EMAIL = ? AND USERNAME = ? AND PASSWORD = ?";
         try(Connection Connect = ConnectToDB(cmd); PreparedStatement PreparedStatement = Connect.prepareStatement(ModifyPASSWORDQuery)){
+            PreparedStatement.executeUpdate( "USE "+GetDBName(cmd));
             PreparedStatement.setString(1, new_PASSWORD);
             PreparedStatement.setString(2, PLATFORM);
             PreparedStatement.setString(3, EMAIL);
@@ -313,6 +320,7 @@ interface OperationsOnDB {
 
             if (ErrorsInRows > 0) logger.info("Successfully updated PASSWORD for EMAIL/USERNAME : " + EMAIL +"/" +USERNAME);
             else logger.error("EMAIL/USERNAME: "+EMAIL+"/"+USERNAME+" DOES NOT EXIST");
+            OperationsOnDB.DeleteCredentials(PLATFORM,EMAIL,USERNAME,cmd);
 
         }catch (SQLException e){
             throw new RuntimeException("Error updating PASSWORD : "+e.getMessage(), e);
@@ -320,41 +328,60 @@ interface OperationsOnDB {
     }
 
     String Description = """
-    LOCKEDOUT - Credential Management Tool
-    
-    Usage: java -jar tool.jar -ul <db_user> -pl <db_password> [OPERATION] [ARGUMENTS]
-    
-    Mandatory Authentication:
-      -ul, --user <user>                            Database username
-      -pl, --pass <pass>                            Database password
-    
-    Operations:
-      -a,  --add                                    Add new credentials (requires -pf -e -u -p)
-      -d,  --delete                                 Delete credentials (requires -pf and either -e or -u)
-      -sa, --show-all                               Show all credentials
-      -sp, --show-platforms                         List all platforms
-      -sc, --show-credentials                       Show credentials for platform (requires -pf and -e/-u)
-      -mu, --modify-username <old> <new>            Modify username
-      -me, --modify-email <old> <new>               Modify email
-      -mp, --modify-password <old> <new>            Modify password
-      -e,  --empty                                  Truncate all data
-      -h,  --help                                   Show this help
-
-    Arguments:
-      -pf, --platform <name>                        Service/platform name (e.g. 'Google')
-      -u,  --user <username>                        Account username
-      -e,  --email <address>                        Account email
-      -p,  --pass <password>                        Account password
-
-    Examples:
-      Add credentials:
-        java -jar LockItOut.jar -ul root -pl secret -a -pf Google -e user@mail.com -u johndoe -p s3cr3t
-      
-      Show Gmail credentials:
-        -java -jar LockItOut.jar ul root -pl secret -sc -pf Google -e user@mail.com
-      
-      Change username:
-        java -jar LockItOut.jar -ul root -pl secret -mu old_username new_username -pf google -e user@mail.com
+            LockItOut - Credential Management Tool
+            
+            Usage: java -jar LockItOut.jar -db <database> -ul <db_user> -pl <db_password> [OPERATION] [ARGUMENTS]
+            
+            Mandatory Authentication:
+              -db, --database <database>       Specify the database name.
+              -ul, --user <db_user>            Database username.
+              -pl, --pass <db_password>        Database password.
+            
+            Operations:
+              -a,  --add                       Add new credentials (requires -pf -e -u -p).
+              -d,  --delete                    Delete credentials (requires -pf and either -e or -u).
+              -sa, --show-all                  Show all credentials stored in the database.
+              -spf, --show-platforms           List all platforms in the database.
+              -sc, --show-credentials          Show credentials for a specific platform (requires -pf and -e/-u).
+              -mu, --modify-username <old> <new> Modify username.
+              -me, --modify-email <old> <new>   Modify email.
+              -mp, --modify-password <old> <new> Modify password.
+              -t,  --empty                     Delete all stored credentials.
+              -h,  --help                      Display this help message.
+            
+            Arguments:
+              -pf, --platform <name>           Specify the platform/service name.
+              -u,  --user <username>           Specify the username for an account.
+              -e,  --email <email>             Specify the email associated with an account.
+              -p,  --pass <password>           Specify the password for an account.
+            
+            Examples:
+              Add credentials:
+                java -jar out/artifacts/LockedOut_jar/LockedOut.jar -ul root -pl secret -db mydb -a -pf Google -e user@gmail.com -u johndoe -p s3cr3t
+                
+              Delete credentials:
+                java -jar out/artifacts/LockedOut_jar/LockedOut.jar -ul root -pl secret -db mydb -d -pf Google -u johndoe
+                
+              Show all credentials:
+                java -jar out/artifacts/LockedOut_jar/LockedOut.jar -ul root -pl secret -db mydb -sa
+                
+              Show credentials for Google:
+                java -jar out/artifacts/LockedOut_jar/LockedOut.jar -db myDB -ul admin -pl secret -sc -pf Google -e user@mail.com
+                
+              Show all platforms:
+                java -jar out/artifacts/LockedOut_jar/LockedOut.jar -ul root -pl secret -db mydb -spf
+                
+              Change email :
+                java -jar out/artifacts/LockedOut_jar/LockedOut.jar -ul root -pl secret -db mydb -me old@mail.com new@mail.com -pf Google -u johndoe
+              
+              Change username:
+                java -jar out/artifacts/LockedOut_jar/LockedOut.jar -ul root -pl secret -db mydb -mu old_user new_user -pf Google -e user@gmail.com
+            
+              Change password:
+                java -jar out/artifacts/LockedOut_jar/LockedOut.jar -ul root -pl secret -db mydb -mp old_pass new_pass -pf Google -e user@gmail.com -u johndoe
+                
+              Truncate database:
+                java -jar out/artifacts/LockedOut_jar/LockedOut.jar -ul root -pl secret -db mydb -t
     """;
     static void Helper(){
         System.out.println(Description);
@@ -366,7 +393,7 @@ interface OperationsOnDB {
         try (Connection Connect = ConnectToDB(cmd);
              PreparedStatement PreparedStatement1 = Connect.prepareStatement(TruncateCredsTableQuery);
              PreparedStatement PreparedStatement2 = Connect.prepareStatement(TruncatePLATFORMSTableQuery))
-        {
+        {   PreparedStatement1.executeUpdate("USE "+GetDBName(cmd));
             PreparedStatement1.executeUpdate();
             PreparedStatement2.executeUpdate();
             logger.info("Successfully truncated PLATFORMS & CREDENTIALS");

@@ -13,7 +13,7 @@ public class Main {
         String oldPassword = null, newPassword = null;
         String oldEmail = null, newEmail = null;
 
-        if (cmd.hasOption("mu") || cmd.hasOption("user-lock")) {
+        if (cmd.hasOption("mu") || cmd.hasOption("modify-username")) {
             String[] usernameArgs = ArgParsing.GetUserOptions("mu", cmd);
             if (usernameArgs != null && usernameArgs.length == 2){
                 oldUsername = usernameArgs[0];
@@ -21,16 +21,16 @@ public class Main {
             }
         }
 
-        if (cmd.hasOption("mp") || cmd.hasOption("password-lock")) {
-            String[] passwordArgs =ArgParsing.GetUserOptions("mp", cmd);
+        if (cmd.hasOption("mp") || cmd.hasOption("modify-password")) {
+            String[] passwordArgs = ArgParsing.GetUserOptions("mp", cmd);
             if (passwordArgs != null && passwordArgs.length == 2){
                 oldPassword = passwordArgs[0];
                 newPassword = passwordArgs[1];
             }
         }
 
-        if (cmd.hasOption("me") || cmd.hasOption("email-lock")) {
-            String[] emailArgs =ArgParsing.GetUserOptions("me", cmd);
+        if (cmd.hasOption("me") || cmd.hasOption("modify-email")) {
+            String[] emailArgs = ArgParsing.GetUserOptions("me", cmd);
             if (emailArgs != null && emailArgs.length == 2){
                 oldEmail = emailArgs[0];
                 newEmail = emailArgs[1];
@@ -42,6 +42,6 @@ public class Main {
         String username = ArgParsing.HasOption("u", cmd) ? ArgParsing.GetOption("u", cmd) : null;
         String password = ArgParsing.HasOption("p", cmd) ? ArgParsing.GetOption("p", cmd) : null;
 
-        HandlingOptions.FilterOptions(args,cmd, platform, email, username, password, oldPassword, newPassword,oldUsername,newUsername,oldEmail,newEmail);
+        HandlingOptions.FilterOptions(args, cmd, platform, email, username, password, oldPassword, newPassword, oldUsername, newUsername, oldEmail, newEmail);
     }
 }
