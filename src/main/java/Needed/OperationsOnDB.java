@@ -1,41 +1,49 @@
 package Needed;
-import static Needed.HandlingOptions.cmd;
+
 
 import java.sql.*;
+
+import org.apache.commons.cli.CommandLine;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 interface OperationsOnDB {
+
     String DB_URL = System.getenv("DB_URL") != null
             ? System.getenv("DB_URL")
             : "jdbc:mysql://localhost:3306/LockItOut?useSSL=false";
-    String DB_USER = ArgParsing.GetOption("ul", cmd);
-    String DB_PASSWORD = ArgParsing.GetOption("pl", cmd);
+    static String getDbUser(CommandLine cmd) {
+        return ArgParsing.GetOption("ul", cmd);
+    }
+
+    static String getDbPassword(CommandLine cmd) {
+        return ArgParsing.GetOption("pl", cmd);
+    }
 
     Logger logger = LoggerFactory.getLogger(OperationsOnDB.class);
 
-    static Connection ConnectToDB(){
+    static Connection ConnectToDB(CommandLine cmd) {
         try {
-            Connection Connect = DriverManager.getConnection(DB_URL, DB_USER, DB_PASSWORD);
-            System.out.println("Successfully connected to database");
-            return Connect;
-        }catch (SQLException e){
-            logger.error("Database connection failed: {}", e.getMessage(), e);
-            throw new RuntimeException("Failed to connect to database", e);
+            String DB_USER = getDbUser(cmd);
+            String DB_PASSWORD = getDbPassword(cmd);
+            return DriverManager.getConnection(DB_URL, DB_USER, DB_PASSWORD);
+        } catch (SQLException e) {
+            logger.error("Connection failed: {}", e.getMessage());
+            throw new RuntimeException(e);
         }
     }
 
     String CreateDBQuery = "CREATE DATABASE IF NOT EXISTS LockedOut";
     String GrantPrevilegesQuery = "GRANT ALL PRIVILEGES ON LockedOut.* TO '?'@'localhost'";
     String FlushQuery = "FLUSH PRIVILEGES";
-    static void CreateDB(){
-        try (Connection Connect = ConnectToDB();
+    static void CreateDB(CommandLine cmd){
+        try (Connection Connect = ConnectToDB(cmd);
              PreparedStatement PreparedStatement1 = Connect.prepareStatement(CreateDBQuery) ;
             PreparedStatement PreparedStatement2 = Connect.prepareStatement(GrantPrevilegesQuery);
             PreparedStatement PreparedStatement3 = Connect.prepareStatement(FlushQuery))
         {
             PreparedStatement1.executeUpdate();
-            PreparedStatement2.setString(1, DB_USER);
+            PreparedStatement2.setString(1, getDbUser(cmd));
             PreparedStatement2.executeUpdate();
             PreparedStatement3.executeUpdate();
             logger.info("Successfully created database");
@@ -45,10 +53,12 @@ interface OperationsOnDB {
         }
     }
 
-    String UseDBQuery = "USE LockedOut";
-    String CreatePLatformsTableQuery = "CREATE TABLE IF NOT EXISTS PLATFORMS (PLATFORM TEXT PRIMARY KEY NOT NULL)";
-    static void CreatePlatformsTable(){
-        try (Connection Connect = ConnectToDB(); Statement Statement = Connect.createStatement()){
+    String UseDBQuery = "USE LockItOut";
+    String CreatePLatformsTableQuery = "CREATE TABLE IF NOT EXISTS PLATFORMS ("
+            + "PLATFORM VARCHAR(255) PRIMARY KEY NOT NULL"
+            + ")";
+    static void CreatePlatformsTable(CommandLine cmd){
+        try (Connection Connect = ConnectToDB(cmd); Statement Statement = Connect.createStatement()){
             Statement.executeUpdate(UseDBQuery);
             Statement.executeUpdate(CreatePLatformsTableQuery);
             System.out.println("Successfully created PLATFORMS Table");
@@ -58,10 +68,10 @@ interface OperationsOnDB {
         }
     }
 
-    static void InsertIntoPlatformsTable(String PLATFORM){
-        CreatePlatformsTable();
+    static void InsertIntoPlatformsTable(String PLATFORM,CommandLine cmd){
+        CreatePlatformsTable(cmd);
         final String InsertIntoPLATFORMSTableQuery = "INSERT IGNORE INTO PLATFORMS (PLATFORM) VALUES (?)";
-        try (Connection Connect = ConnectToDB(); PreparedStatement PreparedStatement = Connect.prepareStatement(InsertIntoPLATFORMSTableQuery)){
+        try (Connection Connect = ConnectToDB(cmd); PreparedStatement PreparedStatement = Connect.prepareStatement(InsertIntoPLATFORMSTableQuery)){
             PreparedStatement.setString(1, PLATFORM);
             PreparedStatement.executeUpdate();
         }catch (SQLException e){
@@ -70,9 +80,9 @@ interface OperationsOnDB {
         }
     }
 
-    static boolean PlatformExists(String PLATFORM){
+    static boolean PlatformExists(String PLATFORM, CommandLine cmd){
         final String GetFromPLATFORMSTableQuery = "SELECT 1 FROM PLATFORMS WHERE PLATFORM = ?";
-        try (Connection Connect = ConnectToDB(); PreparedStatement PreparedStatement = Connect.prepareStatement(GetFromPLATFORMSTableQuery)){
+        try (Connection Connect = ConnectToDB(cmd); PreparedStatement PreparedStatement = Connect.prepareStatement(GetFromPLATFORMSTableQuery)){
             PreparedStatement.setString(1, PLATFORM);
             ResultSet Result = PreparedStatement.executeQuery();
             return Result.next();
@@ -84,7 +94,7 @@ interface OperationsOnDB {
 
     }
 
-    static void DeleteCredentials( String PLATFORM, String EMAIL, String USERNAME){
+    static void DeleteCredentials( String PLATFORM, String EMAIL, String USERNAME, CommandLine cmd){
         String DeleteCredentialsQuery1 ="DELETE FROM Credentials WHERE PLATFORM = ? AND USERNAME = ?";
         String DeleteCredentialsQuery2 ="DELETE FROM Credentials WHERE PLATFORM = ? AND EMAIL = ?";
 
@@ -93,7 +103,7 @@ interface OperationsOnDB {
             System.exit(1);
         }
 
-        try (Connection Connect = ConnectToDB();
+        try (Connection Connect = ConnectToDB(cmd);
              PreparedStatement PreparedStatement1 = Connect.prepareStatement(DeleteCredentialsQuery1);
              PreparedStatement PreparedStatement2 = Connect.prepareStatement(DeleteCredentialsQuery2)){
             PreparedStatement1.setString(1, PLATFORM);
@@ -117,30 +127,30 @@ interface OperationsOnDB {
     }
 
     String CreateCredsTableQuery = "CREATE TABLE IF NOT EXISTS Credentials ("
-            + "PLATFORM TEXT NOT NULL, "
+            + "PLATFORM VARCHAR(255) NOT NULL, "
             + "EMAIL TEXT NOT NULL, "
             + "USERNAME TEXT NOT NULL, "
             + "PASSWORD TEXT NOT NULL, "
             + "FOREIGN KEY (PLATFORM) REFERENCES PLATFORMS(PLATFORM) "
             + "ON DELETE CASCADE ON UPDATE CASCADE"
             + ")";
-    static void CreateCredentialsTable() {
-        try (Connection Connect = ConnectToDB(); Statement Statement = Connect.createStatement()){
+    static void CreateCredentialsTable(CommandLine cmd) {
+        try (Connection Connect = ConnectToDB(cmd); Statement Statement = Connect.createStatement()){
             Statement.executeUpdate(CreateCredsTableQuery);
         }catch (SQLException e){
             throw new RuntimeException("Error creating credentials table : "+e.getMessage(), e);
         }
     }
 
-    static void InsertNewCredentials(String PLATFORM, String EMAIL, String USERNAME, String PASSWORD){
+    static void InsertNewCredentials(String PLATFORM, String EMAIL, String USERNAME, String PASSWORD,CommandLine cmd){
         if(PLATFORM == null || EMAIL == null || USERNAME == null || PASSWORD == null) {
             throw new IllegalArgumentException("All credential fields must be non-null");
         }
-        if (!PlatformExists(PLATFORM)) {
-            InsertIntoPlatformsTable(PLATFORM);
+        if (!PlatformExists(PLATFORM,cmd)) {
+            InsertIntoPlatformsTable(PLATFORM,cmd);
         }
         String InsertNewCredsQuery = "INSERT INTO Credentials (PLATFORM, EMAIL, USERNAME, PASSWORD) VALUES (?,?,?,?)";
-        try (Connection Connect = ConnectToDB();PreparedStatement PreparedStatement = Connect.prepareStatement(InsertNewCredsQuery) ){
+        try (Connection Connect = ConnectToDB(cmd);PreparedStatement PreparedStatement = Connect.prepareStatement(InsertNewCredsQuery) ){
 
             PreparedStatement.setString(1, PLATFORM);
             PreparedStatement.setString(2, EMAIL);
@@ -157,8 +167,8 @@ interface OperationsOnDB {
     }
 
     String ShowALLCredsQuery = "SELECT * FROM Credentials";
-    static void ShowALL (){
-        try (Connection Connect = ConnectToDB();PreparedStatement PreparedStatement = Connect.prepareStatement(ShowALLCredsQuery)){
+    static void ShowALL (CommandLine cmd){
+        try (Connection Connect = ConnectToDB(cmd);PreparedStatement PreparedStatement = Connect.prepareStatement(ShowALLCredsQuery)){
             ResultSet ResultSet = PreparedStatement.executeQuery();
 
             System.out.println("------------------------------------------------------------------------------------------------------------------");
@@ -180,8 +190,8 @@ interface OperationsOnDB {
     }
 
     String ShowPlaformsTableQuery = "SELECT * FROM PLATFORMS";
-    static void ShowPlatformsTable(){
-        try (Connection Connect = ConnectToDB();PreparedStatement PreparedStatement = Connect.prepareStatement(ShowPlaformsTableQuery)){
+    static void ShowPlatformsTable(CommandLine cmd){
+        try (Connection Connect = ConnectToDB(cmd);PreparedStatement PreparedStatement = Connect.prepareStatement(ShowPlaformsTableQuery)){
             ResultSet ResultSet =PreparedStatement.executeQuery();
 
             System.out.println("--------------------------");
@@ -199,7 +209,7 @@ interface OperationsOnDB {
         }
     }
 
-    static void ShowSpecificCreds(String PLATFORM, String EMAIL, String USERNAME){
+    static void ShowSpecificCreds(String PLATFORM, String EMAIL, String USERNAME,CommandLine cmd){
 
         if (PLATFORM == null){
             logger.error ("PLATFORM is null");
@@ -218,7 +228,7 @@ interface OperationsOnDB {
         } else {
             ShowSpecificCredsQuery = "SELECT * FROM Credentials WHERE EMAIL = ?";
         }
-        try (Connection Connect = ConnectToDB();PreparedStatement PreparedStatement = Connect.prepareStatement(ShowSpecificCredsQuery)){
+        try (Connection Connect = ConnectToDB(cmd);PreparedStatement PreparedStatement = Connect.prepareStatement(ShowSpecificCredsQuery)){
             if (USERNAME != null && EMAIL != null) {
                 PreparedStatement.setString(1, USERNAME);
                 PreparedStatement.setString(2, EMAIL);
@@ -246,12 +256,12 @@ interface OperationsOnDB {
         }
     }
 
-    static void ModifyEmail(String PLATFORM, String USERNAME, String old_EMAIL, String new_EMAIL){
+    static void ModifyEmail(String PLATFORM, String USERNAME, String old_EMAIL, String new_EMAIL,CommandLine cmd){
         if (PLATFORM==null || USERNAME == null || old_EMAIL == null || new_EMAIL == null) {
             throw new IllegalArgumentException("Username, old email, and new email must be provided");
         }
         String ModifyEMAILQuery = "UPDATE Credentials SET EMAIL = ? WHERE PLATFORM = ? AND USERNAME = ? AND EMAIL = ?";
-        try (Connection Connect = ConnectToDB();
+        try (Connection Connect = ConnectToDB(cmd);
              PreparedStatement PreparedStatement = Connect.prepareStatement(ModifyEMAILQuery))
         {   PreparedStatement.setString(1, new_EMAIL);
             PreparedStatement.setString(2, PLATFORM);
@@ -268,12 +278,12 @@ interface OperationsOnDB {
         }
     }
 
-    static void ModifyUsername(String PLATFORM, String EMAIL, String old_USERNAME, String new_USERNAME){
+    static void ModifyUsername(String PLATFORM, String EMAIL, String old_USERNAME, String new_USERNAME,CommandLine cmd){
         if (PLATFORM==null || old_USERNAME == null || EMAIL == null || new_USERNAME == null) {
             throw new IllegalArgumentException("EMAIL, old Username and new USERNAME must be provided");
         }
         final String ModifyUSERNAMEQuery = "UPDATE Credentials SET USERNAME = ? WHERE PLATFORM = ? AND EMAIL = ? AND USERNAME = ?";
-        try(Connection Connect = ConnectToDB(); PreparedStatement PreparedStatement = Connect.prepareStatement(ModifyUSERNAMEQuery)){
+        try(Connection Connect = ConnectToDB(cmd); PreparedStatement PreparedStatement = Connect.prepareStatement(ModifyUSERNAMEQuery)){
             PreparedStatement.setString(1, new_USERNAME);
             PreparedStatement.setString(2, PLATFORM);
             PreparedStatement.setString(3, EMAIL);
@@ -288,12 +298,12 @@ interface OperationsOnDB {
         }
     }
 
-    static void ModifyPassword(String PLATFORM, String EMAIL, String USERNAME, String old_PASSWORD, String new_PASSWORD){
+    static void ModifyPassword(String PLATFORM, String EMAIL, String USERNAME, String old_PASSWORD, String new_PASSWORD,CommandLine cmd){
         if (PLATFORM==null || USERNAME == null || EMAIL == null || old_PASSWORD== null || new_PASSWORD == null) {
             throw new IllegalArgumentException("Username, EMAIL, old password and new password must be provided");
         }
         final String ModifyPASSWORDQuery ="UPDATE Credentials SET PASSWORD = ? WHERE PLATFORM = ? AND EMAIL = ? AND USERNAME = ? AND PASSWORD = ?";
-        try(Connection Connect = ConnectToDB(); PreparedStatement PreparedStatement = Connect.prepareStatement(ModifyPASSWORDQuery)){
+        try(Connection Connect = ConnectToDB(cmd); PreparedStatement PreparedStatement = Connect.prepareStatement(ModifyPASSWORDQuery)){
             PreparedStatement.setString(1, new_PASSWORD);
             PreparedStatement.setString(2, PLATFORM);
             PreparedStatement.setString(3, EMAIL);
@@ -352,8 +362,8 @@ interface OperationsOnDB {
 
     String TruncateCredsTableQuery = "TRUNCATE TABLE Credentials";
     String TruncatePLATFORMSTableQuery = "TRUNCATE TABLE PLATFORMS";
-    static void TruncateDB(){
-        try (Connection Connect = ConnectToDB();
+    static void TruncateDB(CommandLine cmd){
+        try (Connection Connect = ConnectToDB(cmd);
              PreparedStatement PreparedStatement1 = Connect.prepareStatement(TruncateCredsTableQuery);
              PreparedStatement PreparedStatement2 = Connect.prepareStatement(TruncatePLATFORMSTableQuery))
         {

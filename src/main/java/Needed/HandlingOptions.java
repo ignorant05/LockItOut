@@ -6,30 +6,30 @@ import org.slf4j.LoggerFactory;
 
 public class HandlingOptions extends ArgParsing implements OperationsOnDB{
     private static final Logger logger = LoggerFactory.getLogger(HandlingOptions.class);
-    protected static CommandLine cmd = null ;
+    protected CommandLine cmd = null ;
 
-    public HandlingOptions(String[] args, CommandLine cmd) {
-        super(args, cmd);
+    public HandlingOptions(String[] args) {
+        super(args);
     }
-    private final boolean DBOwnerOption = HasOption("ul",cmd) || HasOption("user-locked", cmd);
-    private final boolean DBOwnerPasswordOption = HasOption("pl",cmd) || HasOption("password-locked", cmd);
+    private final boolean DBOwnerOption = HasOption("ul", this.getCommandLine()) || HasOption("user-lock", this.getCommandLine());
+    private final boolean DBOwnerPasswordOption = HasOption("pl",this.getCommandLine()) || HasOption("password-lock", this.getCommandLine());
 
-    private final boolean HelpOption = HasOption("h",cmd) || HasOption("help", cmd);
-    private final boolean EmptyOption = HasOption("e",cmd) || HasOption("empty", cmd);
-    private final boolean AddOperationInitialCondition = HasOption("a", cmd) || HasOption("add",cmd) ;
-    private final boolean ShowALLOperationInitialCondition = HasOption("sa", cmd) || HasOption("show-all",cmd) ;
-    private final boolean ShowPlatformOperationInitialCondition = HasOption("spf", cmd) || HasOption("show-platform",cmd) ;
-    private final boolean ShowCredsOperationInitialCondition = HasOption("sc", cmd) || HasOption("show-credentials",cmd) ;
-    private final boolean DeleteOperationInitialCondition = HasOption("d", cmd) || HasOption("delete",cmd) ;
+    private final boolean HelpOption = HasOption("h",this.getCommandLine()) || HasOption("help", this.getCommandLine());
+    private final boolean EmptyOption = HasOption("e",this.getCommandLine()) || HasOption("empty", this.getCommandLine());
+    private final boolean AddOperationInitialCondition = HasOption("a", this.getCommandLine()) || HasOption("add",this.getCommandLine()) ;
+    private final boolean ShowALLOperationInitialCondition = HasOption("sa", this.getCommandLine()) || HasOption("show-all",this.getCommandLine()) ;
+    private final boolean ShowPlatformOperationInitialCondition = HasOption("spf", this.getCommandLine()) || HasOption("show-platform",this.getCommandLine()) ;
+    private final boolean ShowCredsOperationInitialCondition = HasOption("sc", this.getCommandLine()) || HasOption("show-credentials",this.getCommandLine()) ;
+    private final boolean DeleteOperationInitialCondition = HasOption("d", this.getCommandLine()) || HasOption("delete",this.getCommandLine()) ;
 
-    private final boolean HasPlatformOption = HasOption("pf", cmd) || HasOption("platform",cmd) ;
-    private final boolean HasUserNameOption = HasOption("u", cmd) || HasOption("user",cmd) ;
-    private final boolean HasPasswordOption = HasOption("p", cmd) || HasOption("password",cmd) ;
-    private final boolean HasEmailOption = HasOption("e", cmd) || HasOption("email",cmd) ;
+    private final boolean HasPlatformOption = HasOption("pf", this.getCommandLine()) || HasOption("platform",this.getCommandLine()) ;
+    private final boolean HasUserNameOption = HasOption("u", this.getCommandLine()) || HasOption("user",this.getCommandLine()) ;
+    private final boolean HasPasswordOption = HasOption("p", this.getCommandLine()) || HasOption("password",this.getCommandLine()) ;
+    private final boolean HasEmailOption = HasOption("e", this.getCommandLine()) || HasOption("email",this.getCommandLine()) ;
 
-    private final boolean HasModifyUserNameOption= (HasOption("mu",cmd) || HasOption("modify-username",cmd));
-    private final boolean HasModifyPasswordOption = (HasOption("mp",cmd) || HasOption("modify-password",cmd));
-    private final boolean HasModifyEmailOption = (HasOption("me",cmd) || HasOption("modify-email",cmd));
+    private final boolean HasModifyUserNameOption= (HasOption("mu",this.getCommandLine()) || HasOption("modify-username",this.getCommandLine()));
+    private final boolean HasModifyPasswordOption = (HasOption("mp",this.getCommandLine()) || HasOption("modify-password",this.getCommandLine()));
+    private final boolean HasModifyEmailOption = (HasOption("me",this.getCommandLine()) || HasOption("modify-email",this.getCommandLine()));
 
     private final boolean AddOperationFinalCondition = DBOwnerOption && DBOwnerPasswordOption && AddOperationInitialCondition && !ShowALLOperationInitialCondition &&
             !ShowPlatformOperationInitialCondition && !ShowCredsOperationInitialCondition && !DeleteOperationInitialCondition && !HasModifyEmailOption && !HasModifyPasswordOption &&
@@ -74,57 +74,50 @@ public class HandlingOptions extends ArgParsing implements OperationsOnDB{
             !ShowPlatformOperationInitialCondition && !ShowCredsOperationInitialCondition && !DeleteOperationInitialCondition && !HasModifyEmailOption && !HasModifyPasswordOption &&
             !HasModifyUserNameOption && !HasPlatformOption && !HasEmailOption && !HasUserNameOption && !HasPasswordOption && !HelpOption && EmptyOption;
 
-    public static void FilterOptions (String[] args, String platform, String email, String UserName, String password, CommandLine cmd){
+    public static void FilterOptions (String[] args, CommandLine cmd, String platform, String email, String UserName, String password,
+                                      String oldPassword, String newPassword, String oldUsername, String newUsername, String oldEmail, String newEmail){
 
-        HandlingOptions Handler = new HandlingOptions(args, cmd) ;
+        HandlingOptions Handler = new HandlingOptions(args) ;
+        ArgParsing c = new ArgParsing(args) ;
 
-        OperationsOnDB.CreateDB();
-        OperationsOnDB.CreatePlatformsTable();
-        OperationsOnDB.CreateCredentialsTable();
+        //OperationsOnDB.CreateDB(cmd);
+        OperationsOnDB.CreatePlatformsTable(cmd);
+        OperationsOnDB.CreateCredentialsTable(cmd);
 
         if (Handler.AddOperationFinalCondition){
-            OperationsOnDB.InsertNewCredentials(platform, email, UserName, password);
+            OperationsOnDB.InsertNewCredentials(platform, email, UserName, password, cmd);
             logger.info("Insertion Successful");
         }
         else if (Handler.DeleteOperationFinalCondition){
-            OperationsOnDB.DeleteCredentials(platform, email, UserName);
+            OperationsOnDB.DeleteCredentials(platform, email, UserName,cmd);
             logger.info("Deletion Successful");
         }
         else if (Handler.ShowAllOperationFinalCondition){
-            OperationsOnDB.ShowALL();
+            OperationsOnDB.ShowALL(cmd);
             logger.info("Thesse Are All Available Credentials");
         }
         else if (Handler.ShowPlatformOperationFinalCondition){
-            OperationsOnDB.ShowPlatformsTable();
+            OperationsOnDB.ShowPlatformsTable(cmd);
             logger.info("Thesse Are All Available Platforms");
         }
         else if (Handler.ShowCredsOperationFinalCondition){
-            OperationsOnDB.ShowSpecificCreds(platform, email, UserName);
+            OperationsOnDB.ShowSpecificCreds(platform, email, UserName,cmd);
             logger.info("Thesse Are All Available Credentials");
         }
         else if (Handler.ModifyUserNameFinalCondition) {
-            String[] usernameArgs = cmd.getOptionValues("mu");
-            String oldUsername = usernameArgs[0];
-            String newUsername = usernameArgs[1];
-            OperationsOnDB.ModifyUsername(platform, email, oldUsername, newUsername);
+            OperationsOnDB.ModifyUsername(platform, email, oldUsername, newUsername,cmd);
         }
         else if (Handler.ModifyPasswordFinalCondition) {
-            String[] passwordArgs = cmd.getOptionValues("mp");
-            String oldPassword = passwordArgs[0];
-            String newPassword = passwordArgs[1];
-            OperationsOnDB.ModifyPassword(platform, email, UserName, oldPassword, newPassword);
+            OperationsOnDB.ModifyPassword(platform, email, UserName, oldPassword, newPassword,cmd);
         }
         else if (Handler.ModifyEmailFinalCondition) {
-            String[] emailArgs = cmd.getOptionValues("me");
-            String oldEmail = emailArgs[0];
-            String newEmail = emailArgs[1];
-            OperationsOnDB.ModifyEmail(platform, UserName, oldEmail, newEmail);
+            OperationsOnDB.ModifyEmail(platform, UserName, oldEmail, newEmail,cmd);
         }
         else if (Handler.HelpOptionFinalCondition){
             OperationsOnDB.Helper();
         }
         else if (Handler.Empty){
-            OperationsOnDB.TruncateDB();
+            OperationsOnDB.TruncateDB(cmd);
             logger.info("DataBase is Empty");
         }
         else {

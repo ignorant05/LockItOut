@@ -8,7 +8,7 @@ public class ArgParsing {
     private final Options Options = new Options();
     protected OptionGroup Operation = new OptionGroup();
 
-    public ArgParsing(String[] args, CommandLine cmd){
+    public ArgParsing(String[] args){
         CommandLineParser Parser = new DefaultParser();
         HelpFormatter Formatter = new HelpFormatter();
 
@@ -23,7 +23,7 @@ public class ArgParsing {
         Option GetAllCredentials = new Option ("sa", "show-all", false,"Get All credentials from database");
         Option GetAllPlatforms = new Option ("sp", "show_platforms", false,"Get All platforms from database");
         Option Help = new Option("h", "help", false, "show help window");
-        Option Empty = new Option("e", "empty", false,"Truncate database");
+        Option Empty = new Option("v", "empty", false,"Truncate database");
 
         Option Platform = new Option ("pf", "platform", true, "Parse platform");
         Option UserName = new Option("u", "user", true, "Parse Username ");
@@ -83,6 +83,10 @@ public class ArgParsing {
 
     public static String GetOption (String opt, CommandLine cmd){
         return cmd.getOptionValue(opt);
+    }
+
+    public static String[] GetUserOptions (String opt, CommandLine cmd){
+        return cmd.getOptionValues(opt);
     }
 
     public CommandLine getCommandLine() {
