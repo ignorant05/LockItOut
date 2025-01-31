@@ -3,7 +3,6 @@ package Needed;
 import org.apache.commons.cli.* ;
 
 public class ArgParsing {
-
     private CommandLine cmd;
     private final Options Options = new Options();
     protected OptionGroup Operation = new OptionGroup();
@@ -89,9 +88,7 @@ public class ArgParsing {
         return cmd.getOptionValue(opt);
     }
 
-    public static String[] GetUserOptions (String opt, CommandLine cmd){
-        return cmd.getOptionValues(opt);
-    }
+    public static String[] GetUserOptions (String opt, CommandLine cmd){return cmd.getOptionValues(opt);}
 
     public CommandLine getCommandLine() {
         return this.cmd;

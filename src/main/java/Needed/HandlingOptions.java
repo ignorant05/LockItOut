@@ -15,7 +15,6 @@ public class HandlingOptions implements OperationsOnDB{
         return cmd.hasOption(opt);
     }
 
-
     private boolean DBNameOption() {
         return( HasOption("db") || HasOption("database"));
     }
@@ -72,15 +71,35 @@ public class HandlingOptions implements OperationsOnDB{
     }
 
     private boolean AddOperationFinalCondition() {
-        return DBNameOption() && DBOwnerOption() && DBOwnerPasswordOption() && AddOperationInitialCondition() && !ShowALLOperationInitialCondition() &&
-                !ShowPlatformOperationInitialCondition() && !ShowCredsOperationInitialCondition() && !DeleteOperationInitialCondition() && !HasModifyEmailOption() && !HasModifyPasswordOption() &&
-                !HasModifyUserNameOption() && HasPlatformOption () && HasEmailOption() && HasUserNameOption() && HasPasswordOption() && !HelpOption() ;
+        return DBNameOption() && DBOwnerOption() && DBOwnerPasswordOption()
+                && AddOperationInitialCondition()
+                && !ShowALLOperationInitialCondition()
+                && !ShowPlatformOperationInitialCondition()
+                && !ShowCredsOperationInitialCondition()
+                && !DeleteOperationInitialCondition()
+                && !HasModifyEmailOption()
+                && !HasModifyPasswordOption()
+                && !HasModifyUserNameOption()
+                && HasPlatformOption ()
+                && HasEmailOption()
+                && HasUserNameOption()
+                && HasPasswordOption()
+                && !HelpOption() ;
     }
 
     private boolean DeleteOperationFinalCondition() {
-        return DBNameOption() && DBOwnerOption() && DBOwnerPasswordOption() && !AddOperationInitialCondition() && !ShowALLOperationInitialCondition() &&
-                !ShowPlatformOperationInitialCondition() && !ShowCredsOperationInitialCondition() && DeleteOperationInitialCondition() && !HasModifyEmailOption() && !HasModifyPasswordOption() &&
-                !HasModifyUserNameOption() && HasPlatformOption() && (HasEmailOption() || HasUserNameOption() && !HelpOption()) ;
+        return DBNameOption() && DBOwnerOption() && DBOwnerPasswordOption()
+                && !AddOperationInitialCondition()
+                && !ShowALLOperationInitialCondition()
+                && !ShowPlatformOperationInitialCondition()
+                && !ShowCredsOperationInitialCondition()
+                && DeleteOperationInitialCondition()
+                && !HasModifyEmailOption()
+                && !HasModifyPasswordOption()
+                && !HasModifyUserNameOption()
+                && HasPlatformOption()
+                && (HasEmailOption() || HasUserNameOption()
+                && !HelpOption()) ;
     }
     private boolean ShowAllOperationFinalCondition() {
         return (DBNameOption() && DBOwnerOption() && DBOwnerPasswordOption()
@@ -118,32 +137,94 @@ public class HandlingOptions implements OperationsOnDB{
     }
 
     private boolean ModifyUserNameFinalCondition() {
-        return DBNameOption() && DBOwnerOption() && DBOwnerPasswordOption() && !AddOperationInitialCondition() && !ShowALLOperationInitialCondition() &&
-                !ShowPlatformOperationInitialCondition() && !ShowCredsOperationInitialCondition() && !DeleteOperationInitialCondition() && !HasModifyEmailOption() && !HasModifyPasswordOption() &&
-                HasModifyUserNameOption() && HasPlatformOption() && HasEmailOption() && !HasPasswordOption() && !HelpOption() ;
+        return DBNameOption() && DBOwnerOption() && DBOwnerPasswordOption()
+                && !AddOperationInitialCondition()
+                && !ShowALLOperationInitialCondition()
+                && !ShowPlatformOperationInitialCondition()
+                && !ShowCredsOperationInitialCondition()
+                && !DeleteOperationInitialCondition()
+                && !HasModifyEmailOption()
+                && !HasModifyPasswordOption()
+                && HasModifyUserNameOption()
+                && HasPlatformOption()
+                && HasEmailOption()
+                && !HasPasswordOption()
+                && !HelpOption() ;
     }
     private boolean ModifyPasswordFinalCondition () {
-        return DBNameOption() && DBOwnerOption() && DBOwnerPasswordOption() && !AddOperationInitialCondition() && !ShowALLOperationInitialCondition() &&
-                !ShowPlatformOperationInitialCondition() && !ShowCredsOperationInitialCondition() && !DeleteOperationInitialCondition() && !HasModifyEmailOption() && HasModifyPasswordOption() &&
-                !HasModifyUserNameOption() && HasPlatformOption() && (HasEmailOption() || HasUserNameOption()) && !HasPasswordOption() && !HelpOption ();
+        return DBNameOption() && DBOwnerOption() && DBOwnerPasswordOption()
+                && !AddOperationInitialCondition()
+                && !ShowALLOperationInitialCondition()
+                && !ShowPlatformOperationInitialCondition()
+                && !ShowCredsOperationInitialCondition()
+                && !DeleteOperationInitialCondition()
+                && !HasModifyEmailOption()
+                && HasModifyPasswordOption()
+                && !HasModifyUserNameOption()
+                && HasPlatformOption()
+                && (HasEmailOption() || HasUserNameOption())
+                && !HasPasswordOption()
+                && !HelpOption ();
     }
     private boolean ModifyEmailFinalCondition () {
-        return DBNameOption() && DBOwnerOption() && DBOwnerPasswordOption() && !AddOperationInitialCondition() && !ShowALLOperationInitialCondition() &&
-                !ShowPlatformOperationInitialCondition() && !ShowCredsOperationInitialCondition() && !DeleteOperationInitialCondition() && HasModifyEmailOption() && !HasModifyPasswordOption() &&
-                !HasModifyUserNameOption() && HasPlatformOption()  && HasUserNameOption() && !HelpOption();
+        return DBNameOption() && DBOwnerOption() && DBOwnerPasswordOption()
+                && !AddOperationInitialCondition()
+                && !ShowALLOperationInitialCondition()
+                && !ShowPlatformOperationInitialCondition()
+                && !ShowCredsOperationInitialCondition()
+                && !DeleteOperationInitialCondition()
+                && HasModifyEmailOption()
+                && !HasModifyPasswordOption()
+                && !HasModifyUserNameOption()
+                && HasPlatformOption()
+                && HasUserNameOption()
+                && !HelpOption();
     }
 
     private boolean HelpOptionFinalCondition() {
-        return DBNameOption() && DBOwnerOption() && DBOwnerPasswordOption() && ((!AddOperationInitialCondition() && !ShowALLOperationInitialCondition() &&
-                !ShowPlatformOperationInitialCondition() && !ShowCredsOperationInitialCondition() && !DeleteOperationInitialCondition() && !HasModifyEmailOption() && !HasModifyPasswordOption() &&
-                !HasModifyUserNameOption() && !HasPlatformOption() && !HasEmailOption() && !HasUserNameOption() && !HasPasswordOption() && HelpOption()) ||
-                (!AddOperationInitialCondition() && !ShowALLOperationInitialCondition() && !ShowPlatformOperationInitialCondition() && !ShowCredsOperationInitialCondition() && !DeleteOperationInitialCondition() && !HasModifyEmailOption() && !HasModifyPasswordOption() && !HasModifyUserNameOption() && !HasPlatformOption() && !HasEmailOption() && !HasUserNameOption() && !HasPasswordOption() && !HelpOption()));
+        return DBNameOption() && DBOwnerOption() && DBOwnerPasswordOption()
+                && ((!AddOperationInitialCondition()
+                && !ShowALLOperationInitialCondition()
+                && !ShowPlatformOperationInitialCondition()
+                && !ShowCredsOperationInitialCondition()
+                && !DeleteOperationInitialCondition()
+                && !HasModifyEmailOption()
+                && !HasModifyPasswordOption()
+                && !HasModifyUserNameOption()
+                && !HasPlatformOption()
+                && !HasEmailOption()
+                && !HasUserNameOption()
+                && !HasPasswordOption()
+                && HelpOption()) || (!AddOperationInitialCondition()
+                && !ShowALLOperationInitialCondition()
+                && !ShowPlatformOperationInitialCondition()
+                && !ShowCredsOperationInitialCondition()
+                && !DeleteOperationInitialCondition()
+                && !HasModifyEmailOption() && !HasModifyPasswordOption()
+                && !HasModifyUserNameOption()
+                && !HasPlatformOption()
+                && !HasEmailOption()
+                && !HasUserNameOption()
+                && !HasPasswordOption()
+                && !HelpOption()));
     }
 
     private boolean Empty() {
-        return DBNameOption() && DBOwnerOption() && DBOwnerPasswordOption() && !AddOperationInitialCondition() && !ShowALLOperationInitialCondition() &&
-                !ShowPlatformOperationInitialCondition() && !ShowCredsOperationInitialCondition() && !DeleteOperationInitialCondition() && !HasModifyEmailOption() && !HasModifyPasswordOption() &&
-                !HasModifyUserNameOption() && !HasPlatformOption() && !HasEmailOption() && !HasUserNameOption() && !HasPasswordOption() && !HelpOption() && EmptyOption();
+        return DBNameOption() && DBOwnerOption() && DBOwnerPasswordOption()
+                && !AddOperationInitialCondition()
+                && !ShowALLOperationInitialCondition()
+                && !ShowPlatformOperationInitialCondition()
+                && !ShowCredsOperationInitialCondition()
+                && !DeleteOperationInitialCondition()
+                && !HasModifyEmailOption()
+                && !HasModifyPasswordOption()
+                && !HasModifyUserNameOption()
+                && !HasPlatformOption()
+                && !HasEmailOption()
+                && !HasUserNameOption()
+                && !HasPasswordOption()
+                && !HelpOption()
+                && EmptyOption();
     }
 
     public static void FilterOptions(String[] args, CommandLine cmd, String platform, String email, String UserName, String password,
